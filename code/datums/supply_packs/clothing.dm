@@ -94,17 +94,6 @@
 	containername = "Lightweight IMP Backpack Crate"
 	group = "Clothing"
 
-/datum/supply_packs/backpack/logi
-	name = "Logistics IMP Backpack Crate (x4)"
-	contains = list(
-		/obj/item/storage/backpack/marine/satchel/big,
-		/obj/item/storage/backpack/marine/satchel/big,
-		/obj/item/storage/backpack/marine/satchel/big,
-		/obj/item/storage/backpack/marine/satchel/big
-	)
-	cost = RO_PRICE_NORMAL
-	containername = "Logistics IMP Backpack Crate"
-
 /datum/supply_packs/backpack/satchels
 	name = "Marine Satchel Crate (x4)"
 	contains = list(
@@ -170,17 +159,6 @@
 	containername = "Drop Pouch Crate"
 	group = "Clothing"
 
-/datum/supply_packs/webbing_surgical
-	name = "Surgical Webbing Crate (x3)"
-	contains = list(
-		/obj/item/clothing/accessory/storage/surg_vest,
-		/obj/item/clothing/accessory/storage/surg_vest,
-		/obj/item/clothing/accessory/storage/surg_vest,
-	)
-	cost = RO_PRICE_CHEAP
-	containertype = /obj/structure/closet/crate/green
-	containername = "Surgical Webbing Crate"
-	group = "Clothing"
 
 /datum/supply_packs/webbing_knives//for the lulz
 	name = "Knife Vest Crate (x3)"

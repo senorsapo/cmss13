@@ -16,7 +16,7 @@
 	var/burst_amount = 3
 	//FPWs reload automatically
 	var/reloading = FALSE
-	var/reload_time = 20 SECONDS
+	var/reload_time = 10 SECONDS
 	var/reload_time_started = 0
 
 	allowed_seat = VEHICLE_SUPPORT_GUNNER_ONE
@@ -85,8 +85,8 @@
 
 	return TRUE
 
-/obj/item/hardpoint/special/firing_port_weapon/examine(mob/user, var/integrity_only = FALSE)
-	return
+/obj/item/hardpoint/special/firing_port_weapon/get_examine_text(mob/user, var/integrity_only = FALSE)
+	return list()
 
 /obj/item/hardpoint/special/firing_port_weapon/reload(var/mob/user)
 	if(!ammo)

@@ -60,7 +60,6 @@
 
 	var/reagent_move_delay_modifier = 0 //negative values increase movement speed
 
-	var/datum/event/event_movement = null
 	var/blood_type = "X*"
 
 	//Flags for any active emotes the mob may be performing
@@ -76,6 +75,7 @@
 	)
 	//blood.dm
 	var/blood_volume = 0 //how much blood the mob has
+	var/max_blood = BLOOD_VOLUME_NORMAL  // how much they should have
 
 	var/datum/pain/pain	//Pain datum for the mob, set on New()
 	var/datum/stamina/stamina

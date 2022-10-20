@@ -3,10 +3,14 @@
 
 /obj/item/weapon/gun
 	name = "gun"
-	desc = "Its a gun. It's pretty terrible, though."
+	desc = "It's a gun. It's pretty terrible, though."
 	icon = 'icons/obj/items/weapons/guns/gun.dmi'
 	icon_state = ""
 	item_state = "gun"
+	pickupsound = "gunequip"
+	dropsound = "gunrustle"
+	pickupvol = 7
+	dropvol = 15
 	matter = null
 						//Guns generally have their own unique levels.
 	w_class 	= SIZE_MEDIUM
@@ -30,6 +34,7 @@
 	var/muzzle_flash_lum = 3
 
 	var/fire_sound 		= 'sound/weapons/Gunshot.ogg'
+	var/firesound_volume = 60 //Volume of gunshot, adjust depending on volume of shot
 	 ///Does our gun have a unique empty mag sound? If so use instead of pitch shifting.
 	var/fire_rattle		= null
 	var/unload_sound 	= 'sound/weapons/flipblade.ogg'
@@ -206,15 +211,13 @@
 	 * The group or groups of the gun where a fire delay is applied and the delays applied to each group when the gun is dropped
 	 * after being fired
 	 *
-	 * Guns with this var set will apply the specified delays for firing any other guns
-	 * in a specific group
-	 * e.g. FIRE_DELAY_GROUP_X = 1 SECONDS means any gun with the fire delay group FIRE_DELAY_GROUP_X will have to wait 1
-	 * second after the gun has been dropped (the user has to have fired the gun beforehand otherwise no delay is applied)
+	 * Guns with this var set will apply the gun's remaining fire delay to any other guns in the same group
 	 *
 	 * Set as null (does not apply any fire delays to any other gun group) or a list of fire delay groups (string defines)
 	 * matched with the corresponding fire delays applied
 	 */
 	var/list/fire_delay_group
+	var/additional_fire_group_delay = 0 // adds onto the fire delay of the above
 
 /**
  * An assoc list where the keys are fire delay group string defines
@@ -494,8 +497,8 @@
 	update_mag_overlay()
 	update_attachables()
 
-/obj/item/weapon/gun/examine(mob/user)
-	..()
+/obj/item/weapon/gun/get_examine_text(mob/user)
+	. = ..()
 	var/dat = ""
 	if(flags_gun_features & GUN_TRIGGER_SAFETY)
 		dat += "The safety's on!<br>"
@@ -505,19 +508,7 @@
 	for(var/slot in attachments)
 		var/obj/item/attachable/R = attachments[slot]
 		if(!R) continue
-		switch(R.slot)
-			if("rail") 	dat += "It has [icon2html(R)] [R.name] mounted on the top.<br>"
-			if("muzzle") 	dat += "It has [icon2html(R)] [R.name] mounted on the front.<br>"
-			if("stock") 	dat += "It has [icon2html(R)] [R.name] for a stock.<br>"
-			if("under")
-				dat += "It has [icon2html(R)] [R.name]"
-				if(istype(R, /obj/item/attachable/attached_gun/extinguisher))
-					var/obj/item/attachable/attached_gun/extinguisher/E = R
-					dat += " ([E.internal_extinguisher.reagents.total_volume]/[E.internal_extinguisher.max_water])"
-				else if(R.flags_attach_features & ATTACH_WEAPON)
-					dat += " ([R.current_rounds]/[R.max_rounds])"
-				dat += " mounted underneath.<br>"
-			else dat += "It has [icon2html(R)] [R.name] attached.<br>"
+		dat += R.handle_attachment_description()
 
 	if(!(flags_gun_features & (GUN_INTERNAL_MAG|GUN_UNUSUAL_DESIGN))) //Internal mags and unusual guns have their own stuff set.
 		if(current_mag && current_mag.current_rounds > 0)
@@ -525,10 +516,10 @@
 			else 								dat += "It's loaded[in_chamber?" and has a round chambered":""].<br>"
 		else 									dat += "It's unloaded[in_chamber?" but has a round chambered":""].<br>"
 	if(!(flags_gun_features & GUN_UNUSUAL_DESIGN))
-		dat += "[icon2html(src)] <a href='?src=\ref[src];list_stats=1'>\[See combat statistics]</a><br>"
+		dat += "<a href='?src=\ref[src];list_stats=1'>\[See combat statistics]</a>"
 
 	if(dat)
-		to_chat(user, dat)
+		. += dat
 
 /obj/item/weapon/gun/Topic(href, href_list)
 	. = ..()
@@ -698,8 +689,8 @@
 			to_chat(user, SPAN_WARNING("Your other hand can't hold \the [src]!"))
 			return
 
-	flags_item 	   ^= WIELDED
-	name 	   += " (Wielded)"
+	flags_item ^= WIELDED
+	name += " (Wielded)"
 	item_state += "_w"
 	slowdown = initial(slowdown) + aim_slowdown
 	place_offhand(user, initial(name))
@@ -1112,7 +1103,8 @@ and you're good to go.
 		var/obj/item/projectile/projectile_to_fire = load_into_chamber(user) //Load a bullet in or check for existing one.
 		if(!projectile_to_fire) //If there is nothing to fire, click.
 			click_empty(user)
-			break
+			flags_gun_features &= ~GUN_BURST_FIRING
+			return
 
 		apply_bullet_effects(projectile_to_fire, user, bullets_fired, reflex, dual_wield) //User can be passed as null.
 		SEND_SIGNAL(projectile_to_fire, COMSIG_BULLET_USER_EFFECTS, user)
@@ -1159,7 +1151,6 @@ and you're good to go.
 				last_fired = world.time
 			SEND_SIGNAL(user, COMSIG_MOB_FIRED_GUN, src, projectile_to_fire)
 			. = TRUE
-			flags_gun_features |= GUN_FIRED_BY_USER
 
 			if(flags_gun_features & GUN_FULL_AUTO_ON)
 				fa_shots++
@@ -1200,7 +1191,7 @@ and you're good to go.
 		if(!able_to_fire(user))
 			return TRUE
 
-		var/ffl = " (<A HREF='?_src_=admin_holder;adminplayerobservecoodjump=1;X=[user.x];Y=[user.y];Z=[user.z]'>JMP</a>) (<a href='?priv_msg=\ref[user.client]'>PM</a>)"
+		var/ffl = " (<A HREF='?_src_=admin_holder;[HrefToken(forceGlobal = TRUE)];adminplayerobservecoodjump=1;X=[user.x];Y=[user.y];Z=[user.z]'>JMP</a>) ([user.client ? "<a href='?priv_msg=[user.client.ckey]'>PM</a>" : "NO CLIENT"])"
 
 		var/obj/item/weapon/gun/revolver/current_revolver = src
 		if(istype(current_revolver) && current_revolver.russian_roulette)
@@ -1332,6 +1323,7 @@ and you're good to go.
 		apply_bullet_effects(projectile_to_fire, user, bullets_fired) //We add any damage effects that we need.
 
 		SEND_SIGNAL(projectile_to_fire, COMSIG_BULLET_USER_EFFECTS, user)
+		SEND_SIGNAL(user, COMSIG_DIRECT_BULLET_HIT, M)
 		simulate_recoil(1, user)
 
 		if(projectile_to_fire.ammo.bonus_projectiles_amount)
@@ -1371,7 +1363,6 @@ and you're good to go.
 			last_fired = world.time
 
 		SEND_SIGNAL(user, COMSIG_MOB_FIRED_GUN, src, projectile_to_fire)
-		flags_gun_features |= GUN_FIRED_BY_USER
 
 		if(EXECUTION_CHECK) //Continue execution if on the correct intent. Accounts for change via the earlier do_after
 			user.visible_message(SPAN_DANGER("[user] has executed [M] with [src]!"), SPAN_DANGER("You have executed [M] with [src]!"), message_flags = CHAT_TYPE_WEAPON_USE)
@@ -1519,8 +1510,8 @@ not all weapons use normal magazines etc. load_into_chamber() itself is designed
 		gun_scatter += max(0, movement_onehanded_acc_penalty_mult * SCATTER_AMOUNT_TIER_10)
 
 	if(dual_wield) //akimbo firing gives terrible accuracy
-		gun_accuracy_mult = max(0.1, gun_accuracy_mult - 0.1*rand(3,5))
-		gun_scatter += SCATTER_AMOUNT_TIER_4
+		gun_accuracy_mult = max(0.1, gun_accuracy_mult - 0.1*rand(5,7))
+		gun_scatter += SCATTER_AMOUNT_TIER_3
 
 	// Apply any skill-based bonuses to accuracy
 	if(user && user.mind && user.skills)
@@ -1569,9 +1560,9 @@ not all weapons use normal magazines etc. load_into_chamber() itself is designed
 		else
 			if(!(flags_gun_features & GUN_SILENCED))
 				if (firing_sndfreq && fire_rattle)
-					playsound(user, fire_rattle, 60, FALSE)//if the gun has a unique 'mag rattle' SFX play that instead of pitch shifting.
+					playsound(user, fire_rattle, firesound_volume, FALSE)//if the gun has a unique 'mag rattle' SFX play that instead of pitch shifting.
 				else
-					playsound(user, actual_sound, 60, firing_sndfreq)
+					playsound(user, actual_sound, firesound_volume, firing_sndfreq)
 			else
 				playsound(user, actual_sound, 25, firing_sndfreq)
 
@@ -1635,7 +1626,7 @@ not all weapons use normal magazines etc. load_into_chamber() itself is designed
 	else
 		total_recoil += recoil_unwielded
 		if(flags_gun_features & GUN_BURST_FIRING)
-			total_recoil += 1
+			total_recoil++
 
 	if(user && user.mind && user.skills)
 		if(user.skills.get_skill_level(SKILL_FIREARMS) == 0) //no training in any firearms
@@ -1671,3 +1662,17 @@ not all weapons use normal magazines etc. load_into_chamber() itself is designed
 	rotate.Turn(angle)
 	I.transform = rotate
 	I.flick_overlay(user, 3)
+
+/obj/item/weapon/gun/attack_alien(mob/living/carbon/Xenomorph/xeno)
+	..()
+	var/slashed_light = FALSE
+	for(var/slot in attachments)
+		if(istype(attachments[slot], /obj/item/attachable/flashlight))
+			var/obj/item/attachable/flashlight/flashlight = attachments[slot]
+			if(flashlight.activate_attachment(src, xeno, TRUE))
+				slashed_light = TRUE
+	if(slashed_light)
+		playsound(loc, "alien_claw_metal", 25, 1)
+		xeno.animation_attack_on(src)
+		xeno.visible_message(SPAN_XENOWARNING("\The [xeno] slashes the lights on \the [src]!"), SPAN_XENONOTICE("You slash the lights on \the [src]!"))
+	return XENO_ATTACK_ACTION

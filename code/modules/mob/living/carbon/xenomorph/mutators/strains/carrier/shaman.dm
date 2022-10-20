@@ -52,6 +52,8 @@
 	MS.recalculate_actions(description, flavor_description)
 	C.phero_modifier = -C.caste.aura_strength
 	C.recalculate_pheromones()
+	if(C.huggers_cur > 0)
+		playsound(C.loc, 'sound/voice/alien_facehugger_dies.ogg', 25, 1)
 	C.huggers_cur = 0
 	C.huggers_max = 0
 	return TRUE
@@ -409,7 +411,7 @@
 /datum/action/xeno_action/activable/sacrifice_egg/radius_remember
 	name = "Remember Pain (300)"
 	action_icon_state = "xeno_readmit"
-	ability_name = "adrenal pheromones"
+	ability_name = "remember pain"
 	macro_path = /datum/action/xeno_action/verb/radius_remember
 	action_type = XENO_ACTION_ACTIVATE
 	var/pheromone_strength_per_xeno = 0.5

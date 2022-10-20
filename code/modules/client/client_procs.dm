@@ -12,7 +12,7 @@ GLOBAL_LIST_INIT(blacklisted_builds, list(
 	"1407" = "bug preventing client display overrides from working leads to clients being able to see things/mobs they shouldn't be able to see",
 	"1408" = "bug preventing client display overrides from working leads to clients being able to see things/mobs they shouldn't be able to see",
 	"1428" = "bug causing right-click menus to show too many verbs that's been fixed in version 1429",
-	"1548" = "bug breaking the \"alpha\" functionality in the game, allowing clients to be able to see things/mobs they should not be able to see."
+	"1548" = "bug breaking the \"alpha\" functionality in the game, allowing clients to be able to see things/mobs they should not be able to see.",
 	))
 
 #define LIMITER_SIZE	5
@@ -119,20 +119,25 @@ GLOBAL_LIST_INIT(whitelisted_client_procs, list(
 		//del(usr)
 		return
 
-	//Admin PM //Why is this not in /datums/admin/Topic()
 	if(href_list["priv_msg"])
-		var/client/C = locate(href_list["priv_msg"])
-		if(ismob(C)) 		//Old stuff can feed-in mobs instead of clients
-			var/mob/M = C
-			C = M.client
-		if(!C) return //Outdated links to logged players generate runtimes
-		if(unansweredAhelps[C.computer_id]) unansweredAhelps.Remove(C.computer_id)
-		cmd_admin_pm(C,null)
+		var/client/receiver_client
+		for(var/client/C as anything in GLOB.clients)
+			if(C.ckey == ckey(href_list["priv_msg"]))
+				receiver_client = C
+				break
+		if(!receiver_client)
+			to_chat(src, SPAN_WARNING("The person you were attempting to PM has gone offline!"))
+			return
+		if(unansweredAhelps[receiver_client.computer_id]) unansweredAhelps.Remove(receiver_client.computer_id)
+		cmd_admin_pm(receiver_client, null)
 		return
 
 	else if(href_list["FaxView"])
 		var/info = locate(href_list["FaxView"])
 		show_browser(usr, "<body class='paper'>[info]</body>", "Fax Message", "Fax Message")
+
+	else if(href_list["medals_panel"])
+		GLOB.medals_panel.tgui_interact(mob)
 
 	//NOTES OVERHAUL
 	if(href_list["add_merit_info"])
@@ -212,7 +217,7 @@ GLOBAL_LIST_INIT(whitelisted_client_procs, list(
 			if(proc_to_call in GLOB.whitelisted_client_procs)
 				call(src, proc_to_call)()
 			else
-				message_staff("[key_name_admin(src)] attempted to do a href exploit. (Inputted command: [proc_to_call])")
+				message_staff("[key_name_admin(src)] attempted to do a href exploit. (Inputted command: [html_encode(proc_to_call)])")
 			return // Don't call hsrc in this case since it's ourselves
 
 	if(href_list[CLAN_ACTION])
@@ -293,7 +298,7 @@ GLOBAL_LIST_INIT(whitelisted_client_procs, list(
 	notify_login()
 
 	add_pref_verbs()
-	//preferences datum - also holds some persistant data for the client (because we may as well keep these datums to a minimum)
+	//preferences datum - also holds some persistent data for the client (because we may as well keep these datums to a minimum)
 	prefs = preferences_datums[ckey]
 	if(QDELETED(prefs) || !istype(prefs))
 		prefs = new /datum/preferences(src)
@@ -341,7 +346,7 @@ GLOBAL_LIST_INIT(whitelisted_client_procs, list(
 		to_chat_immediate(src, SPAN_WARNING(FONT_SIZE_HUGE("Your version of byond is blacklisted.")))
 		to_chat_immediate(src, SPAN_WARNING(FONT_SIZE_LARGE("Byond build [byond_build] ([byond_version].[byond_build]) has been blacklisted for the following reason: [GLOB.blacklisted_builds[num2text(byond_build)]].")))
 		to_chat_immediate(src, SPAN_WARNING(FONT_SIZE_LARGE("Please download a new version of byond. If [byond_build] is the latest (which it shouldn't be), you can go to <a href=\"https://secure.byond.com/download/build\">BYOND's website</a> to download other versions.")))
-		to_chat_immediate(src, SPAN_NOTICE(FONT_SIZE_LARGE("Have a CM day.")))
+		to_chat_immediate(src, SPAN_NOTICE(FONT_SIZE_LARGE("You will now be automatically disconnected. Have a CM day.")))
 		qdel(src)
 		return
 
@@ -455,10 +460,10 @@ GLOBAL_LIST_INIT(whitelisted_client_procs, list(
 					spawn() alert("You have logged in already with another key this round, please log out of this one NOW or risk being banned!")
 				if(matches)
 					if(M.client)
-						message_staff("<font color='red'><B>Notice: </B>[SPAN_BLUE("<A href='?src=\ref[usr];priv_msg=\ref[src]'>[key_name_admin(src)]</A> has the same [matches] as <A href='?src=\ref[usr];priv_msg=\ref[src]'>[key_name_admin(M)]</A>.")]", 1)
+						message_staff("<font color='red'><B>Notice: </B>[SPAN_BLUE("<A href='?src=\ref[usr];priv_msg=[src.ckey]'>[key_name_admin(src)]</A> has the same [matches] as <A href='?src=\ref[usr];priv_msg=[src.ckey]'>[key_name_admin(M)]</A>.")]", 1)
 						log_access("Notice: [key_name(src)] has the same [matches] as [key_name(M)].")
 					else
-						message_staff("<font color='red'><B>Notice: </B>[SPAN_BLUE("<A href='?src=\ref[usr];priv_msg=\ref[src]'>[key_name_admin(src)]</A> has the same [matches] as [key_name_admin(M)] (no longer logged in).")]", 1)
+						message_staff("<font color='red'><B>Notice: </B>[SPAN_BLUE("<A href='?src=\ref[usr];priv_msg=[src.ckey]'>[key_name_admin(src)]</A> has the same [matches] as [key_name_admin(M)] (no longer logged in).")]", 1)
 						log_access("Notice: [key_name(src)] has the same [matches] as [key_name(M)] (no longer logged in).")
 
 
@@ -624,6 +629,8 @@ GLOBAL_LIST_INIT(whitelisted_client_procs, list(
 					winset(src, "srvkeybinds-[REF(key)]", "parent=default;name=[key];command=\"say\\n.typing\"")
 				if("OOC")
 					winset(src, "srvkeybinds-[REF(key)]", "parent=default;name=[key];command=ooc")
+				if("LOOC")
+					winset(src, "srvkeybinds-[REF(key)]", "parent=default;name=[key];command=looc")
 				if("Me")
 					winset(src, "srvkeybinds-[REF(key)]", "parent=default;name=[key];command=\"me\\n.typing\"")
 				if("Whisper")
@@ -635,3 +642,27 @@ GLOBAL_LIST_INIT(whitelisted_client_procs, list(
 	else
 		winset(src, "mainwindow", "is-maximized=false;can-resize=true;titlebar=true;menu=menu")
 	winset(src, "mainwindow", "is-maximized=true")
+
+/// Attempts to make the client orbit the given object, for administrative purposes.
+/// If they are not an observer, will try to aghost them.
+/client/proc/admin_follow(atom/movable/target)
+	var/can_ghost = TRUE
+
+	if (!isobserver(mob))
+		can_ghost = admin_ghost()
+
+	if(!can_ghost)
+		return FALSE
+
+	var/mob/dead/observer/observer = mob
+	observer.ManualFollow(target)
+
+/client/proc/check_timelock(var/list/roles, var/hours)
+	var/timelock_name = "[islist(roles) ? jointext(roles, "") : roles][hours]"
+	if(!GLOB.timelocks[timelock_name])
+		GLOB.timelocks[timelock_name] = TIMELOCK_JOB(roles, hours)
+	var/datum/timelock/timelock = GLOB.timelocks[timelock_name]
+	if(timelock.can_play(src))
+		return TRUE
+	return FALSE
+

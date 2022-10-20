@@ -5,6 +5,7 @@
 #define MENU_YAUTJA "yautja"
 #define MENU_MENTOR "mentor"
 #define MENU_SETTINGS "settings"
+#define MENU_ERT "ert"
 
 var/list/preferences_datums = list()
 
@@ -24,10 +25,10 @@ var/const/MAX_SAVE_SLOTS = 10
 
 /datum/preferences
 	var/client/owner
-	var/obj/screen/preview/preview_front
+	var/atom/movable/screen/preview/preview_front
 	var/mob/living/carbon/human/dummy/preview_dummy
-	var/obj/screen/rotate/alt/rotate_left
-	var/obj/screen/rotate/rotate_right
+	var/atom/movable/screen/rotate/alt/rotate_left
+	var/atom/movable/screen/rotate/rotate_right
 
 	//doohickeys for savefiles
 	var/path
@@ -47,12 +48,14 @@ var/const/MAX_SAVE_SLOTS = 10
 	var/lastchangelog = ""				// Saved changlog filesize to detect if there was a change
 	var/ooccolor
 	var/be_special = 0				// Special role selection
-	var/toggle_prefs = TOGGLE_MIDDLE_MOUSE_CLICK|TOGGLE_DIRECTIONAL_ATTACK // flags in #define/mode.dm
+	var/toggle_prefs = TOGGLE_MIDDLE_MOUSE_CLICK|TOGGLE_DIRECTIONAL_ATTACK|TOGGLE_MEMBER_PUBLIC|TOGGLE_AMBIENT_OCCLUSION // flags in #define/mode.dm
 	var/UI_style = "midnight"
 	var/toggles_chat = TOGGLES_CHAT_DEFAULT
 	var/toggles_ghost = TOGGLES_GHOST_DEFAULT
+	var/toggles_langchat = TOGGLES_LANGCHAT_DEFAULT
 	var/toggles_sound = TOGGLES_SOUND_DEFAULT
 	var/toggles_flashing = TOGGLES_FLASHING_DEFAULT
+	var/toggles_ert = TOGGLES_ERT_DEFAULT
 	var/chat_display_preferences = CHAT_TYPE_ALL
 	var/UI_style_color = "#ffffff"
 	var/UI_style_alpha = 255
@@ -64,6 +67,8 @@ var/const/MAX_SAVE_SLOTS = 10
 							"Squad HUD" = FALSE,
 							"Xeno Status HUD" = FALSE
 							)
+	var/ghost_vision_pref = GHOST_VISION_LEVEL_MID_NVG
+	var/ghost_orbit = GHOST_ORBIT_CIRCLE
 
 	//Synthetic specific preferences
 	var/synthetic_name = "Undefined"
@@ -72,6 +77,7 @@ var/const/MAX_SAVE_SLOTS = 10
 	var/predator_name = "Undefined"
 	var/predator_gender = MALE
 	var/predator_age = 100
+	var/predator_h_style = "Standard"
 	var/predator_translator_type = "Modern"
 	var/predator_mask_type = 1
 	var/predator_armor_type = 1
@@ -79,6 +85,9 @@ var/const/MAX_SAVE_SLOTS = 10
 	var/predator_armor_material = "ebony"
 	var/predator_mask_material = "ebony"
 	var/predator_greave_material = "ebony"
+	var/predator_caster_material = "ebony"
+	var/predator_cape_type = "None"
+	var/predator_cape_color = "#654321"
 	var/predator_flavor_text = ""
 	//CO-specific preferences
 	var/commander_sidearm = "Mateba"
@@ -95,10 +104,10 @@ var/const/MAX_SAVE_SLOTS = 10
 	var/be_random_name = 0				//whether we are a random name every round
 	var/be_random_body = 0				//whether we have a random appearance every round
 	var/gender = MALE					//gender of character (well duh)
-	var/age = 18						//age of character
+	var/age = 19						//age of character
 	var/spawnpoint = "Arrivals Shuttle" //where this character will spawn (0-2).
-	var/underwear = "Briefs"			//underwear type
-	var/undershirt = 1					//undershirt type
+	var/underwear = "Boxers (Camo Conforming)"			//underwear type
+	var/undershirt = "Undershirt"					//undershirt type
 	var/backbag = 2						//backpack type
 	var/h_style = "Crewcut"				//Hair type
 	var/r_hair = 0						//Hair color
@@ -123,10 +132,10 @@ var/const/MAX_SAVE_SLOTS = 10
 	var/preferred_squad = "None"
 
 		//Some faction information.
-	var/home_system = "Unset"           //System of birth.
-	var/citizenship = "United Americas (United States)" //Current home system.
-	var/faction = "None"                //Antag faction/general associated faction.
-	var/religion = "None"               //Religious association.
+	var/home_system = "Unset"           	//System of birth.
+	var/citizenship = CITIZENSHIP_US 		//Current home system.
+	var/faction = "None"                	//Antag faction/general associated faction.
+	var/religion = RELIGION_AGNOSTICISM     //Religious association.
 
 		//Mob preview
 	var/icon/preview_icon = null
@@ -188,6 +197,7 @@ var/const/MAX_SAVE_SLOTS = 10
 	var/hide_statusbar
 
 	var/no_radials_preference = FALSE
+	var/no_radial_labels_preference = FALSE
 
 	var/bg_state = "blank" // the icon_state of the floortile background displayed behind the mannequin in character creation
 	var/show_job_gear = TRUE // whether the job gear gets equipped to the mannequin in character creation
@@ -270,7 +280,8 @@ var/const/MAX_SAVE_SLOTS = 10
 		dat += "<a[current_menu == MENU_YAUTJA ? " class='linkOff'" : ""] href=\"byond://?src=\ref[user];preference=change_menu;menu=[MENU_YAUTJA]\"><b>Yautja</b></a> - "
 	if(RoleAuthority.roles_whitelist[user.ckey] & WHITELIST_MENTOR)
 		dat += "<a[current_menu == MENU_MENTOR ? " class='linkOff'" : ""] href=\"byond://?src=\ref[user];preference=change_menu;menu=[MENU_MENTOR]\"><b>Mentor</b></a> - "
-	dat += "<a[current_menu == MENU_SETTINGS ? " class='linkOff'" : ""] href=\"byond://?src=\ref[user];preference=change_menu;menu=[MENU_SETTINGS]\"><b>Settings</b></a>"
+	dat += "<a[current_menu == MENU_SETTINGS ? " class='linkOff'" : ""] href=\"byond://?src=\ref[user];preference=change_menu;menu=[MENU_SETTINGS]\"><b>Settings</b></a> - "
+	dat += "<a[current_menu == MENU_ERT ? " class='linkOff'" : ""] href=\"byond://?src=\ref[user];preference=change_menu;menu=[MENU_ERT]\"><b>ERT</b></a>"
 	dat += "</center>"
 
 	dat += "<hr>"
@@ -325,7 +336,7 @@ var/const/MAX_SAVE_SLOTS = 10
 
 			dat += "<h2><b><u>Marine Gear:</u></b></h2>"
 			dat += "<b>Underwear:</b> <a href ='?_src_=prefs;preference=underwear;task=input'><b>[underwear]</b></a><br>"
-			dat += "<b>Undershirt:</b> <a href='?_src_=prefs;preference=undershirt;task=input'><b>[undershirt_t[undershirt]]</b></a><br>"
+			dat += "<b>Undershirt:</b> <a href='?_src_=prefs;preference=undershirt;task=input'><b>[undershirt]</b></a><br>"
 
 			dat += "<b>Backpack Type:</b> <a href ='?_src_=prefs;preference=bag;task=input'><b>[backbaglist[backbag]]</b></a><br>"
 
@@ -383,7 +394,7 @@ var/const/MAX_SAVE_SLOTS = 10
 			dat += "<b>Xeno postfix:</b> <a href='?_src_=prefs;preference=xeno_postfix;task=input'><b>[display_postfix]</b></a><br>"
 
 			dat += "<b>Enable Playtime Perks:</b> <a href='?_src_=prefs;preference=playtime_perks'><b>[playtime_perks? "Yes" : "No"]</b></a><br>"
-			dat += "<b>Default Night Vision Level:</b> <a href='?_src_=prefs;preference=xeno_vision_level_pref;task=input'><b>[xeno_vision_level_pref]</b></a><br>"
+			dat += "<b>Default Xeno Night Vision Level:</b> <a href='?_src_=prefs;preference=xeno_vision_level_pref;task=input'><b>[xeno_vision_level_pref]</b></a><br>"
 
 			var/tempnumber = rand(1, 999)
 			var/postfix_text = xeno_postfix ? ("-"+xeno_postfix) : ""
@@ -454,6 +465,7 @@ var/const/MAX_SAVE_SLOTS = 10
 				dat += "<b>Yautja Name:</b> <a href='?_src_=prefs;preference=pred_name;task=input'><b>[predator_name]</b></a><br>"
 				dat += "<b>Yautja Gender:</b> <a href='?_src_=prefs;preference=pred_gender;task=input'><b>[predator_gender == MALE ? "Male" : "Female"]</b></a><br>"
 				dat += "<b>Yautja Age:</b> <a href='?_src_=prefs;preference=pred_age;task=input'><b>[predator_age]</b></a><br>"
+				dat += "<b>Yautja Quill Style:</b> <a href='?_src_=prefs;preference=pred_hair;task=input'><b>[predator_h_style]</b></a><br>"
 				dat += "<b>Yautja Flavor Text:</b> <a href='?_src_=prefs;preference=pred_flavor_text;task=input'><b>[TextPreview(predator_flavor_text, 15)]</b></a><br>"
 				dat += "<b>Yautja Whitelist Status:</b> <a href='?_src_=prefs;preference=yautja_status;task=input'><b>[yautja_status]</b></a>"
 				dat += "</div>"
@@ -466,7 +478,18 @@ var/const/MAX_SAVE_SLOTS = 10
 				dat += "<b>Greave Style:</b> <a href='?_src_=prefs;preference=pred_boot_type;task=input'><b>([predator_boot_type])</b></a><br>"
 				dat += "<b>Mask Material:</b> <a href='?_src_=prefs;preference=pred_mask_mat;task=input'><b>[predator_mask_material]</b></a><br>"
 				dat += "<b>Armor Material:</b> <a href='?_src_=prefs;preference=pred_armor_mat;task=input'><b>[predator_armor_material]</b></a><br>"
-				dat += "<b>Greave Material:</b> <a href='?_src_=prefs;preference=pred_greave_mat;task=input'><b>[predator_greave_material]</b></a>"
+				dat += "<b>Greave Material:</b> <a href='?_src_=prefs;preference=pred_greave_mat;task=input'><b>[predator_greave_material]</b></a><br>"
+				dat += "<b>Caster Material:</b> <a href='?_src_=prefs;preference=pred_caster_mat;task=input'><b>[predator_caster_material]</b></a>"
+				dat += "</div>"
+
+				dat += "<div id='column3'>"
+				dat += "<h2><b><u>Clothing Setup:</u></b></h2>"
+				dat += "<b>Cape Type:</b> <a href='?_src_=prefs;preference=pred_cape_type;task=input'><b>[capitalize_first_letters(predator_cape_type)]</b></a><br>"
+				dat += "<b>Cape Color:</b> "
+				dat += "<a href='?_src_=prefs;preference=pred_cape_color;task=input'>"
+				dat += "<b>Color</b> <span class='square' style='background-color: [predator_cape_color];'></span>"
+				dat += "</a><br><br>"
+				dat += "<b>Background:</b> <a href ='?_src_=prefs;preference=cycle_bg'><b>Cycle Background</b></a>"
 				dat += "</div>"
 			else
 				dat += "<b>You do not have the whitelist for this role.</b>"
@@ -491,24 +514,34 @@ var/const/MAX_SAVE_SLOTS = 10
 			dat += "<b>Stylesheet:</b> <a href='?_src_=prefs;preference=stylesheet'><b>[stylesheet]</b></a><br>"
 			dat += "<b>Hide Statusbar:</b> <a href='?_src_=prefs;preference=hide_statusbar'><b>[hide_statusbar ? "TRUE" : "FALSE"]</b></a><br>"
 			dat += "<b>Prefer input drop down menus to radial menus, where possible:</b> <a href='?_src_=prefs;preference=no_radials_preference'><b>[no_radials_preference ? "TRUE" : "FALSE"]</b></a><br>"
+			if(!no_radials_preference)
+				dat += "<b>Hide Radial Menu Labels:</b> <a href='?_src_=prefs;preference=no_radial_labels_preference'><b>[no_radial_labels_preference ? "TRUE" : "FALSE"]</b></a><br>"
+
+			dat += "<h2><b><u>Chat Settings:</u></b></h2>"
+			if(CONFIG_GET(flag/ooc_country_flags))
+				dat += "<b>OOC Country Flag:</b> <a href='?_src_=prefs;preference=ooc_flag'><b>[(toggle_prefs & TOGGLE_OOC_FLAG) ? "Enabled" : "Disabled"]</b></a><br>"
 			if(user.client.admin_holder && user.client.admin_holder.rights & R_DEBUG)
 				dat += "<b>View Master Controller Tab:</b> <a href='?_src_=prefs;preference=ViewMC'><b>[View_MC ? "TRUE" : "FALSE"]</b></a>"
 			if(unlock_content)
-				dat += "<b>BYOND Membership Publicity:</b> <a href='?_src_=prefs;preference=publicity'><b>[(toggle_prefs & MEMBER_PUBLIC) ? "Public" : "Hidden"]</b></a><br>"
+				dat += "<b>BYOND Membership Publicity:</b> <a href='?_src_=prefs;preference=publicity'><b>[(toggle_prefs & TOGGLE_MEMBER_PUBLIC) ? "Public" : "Hidden"]</b></a><br>"
+			dat += "<b>Ghost Ears:</b> <a href='?_src_=prefs;preference=ghost_ears'><b>[(toggles_chat & CHAT_GHOSTEARS) ? "All Speech" : "Nearest Creatures"]</b></a><br>"
+			dat += "<b>Ghost Sight:</b> <a href='?_src_=prefs;preference=ghost_sight'><b>[(toggles_chat & CHAT_GHOSTSIGHT) ? "All Emotes" : "Nearest Creatures"]</b></a><br>"
+			dat += "<b>Ghost Radio:</b> <a href='?_src_=prefs;preference=ghost_radio'><b>[(toggles_chat & CHAT_GHOSTRADIO) ? "All Chatter" : "Nearest Speakers"]</b></a><br>"
+			dat += "<b>Ghost Hivemind:</b> <a href='?_src_=prefs;preference=ghost_hivemind'><b>[(toggles_chat & CHAT_GHOSTHIVEMIND) ? "Show Hivemind" : "Hide Hivemind"]</b></a><br>"
+			dat += "<b>Abovehead Chat:</b> <a href='?_src_=prefs;preference=lang_chat_disabled'><b>[lang_chat_disabled ? "Hide" : "Show"]</b></a><br>"
+			dat += "<b>Abovehead Emotes:</b> <a href='?_src_=prefs;preference=langchat_emotes'><b>[(toggles_langchat & LANGCHAT_SEE_EMOTES) ? "Show" : "Hide"]</b></a><br>"
 			dat += "</div>"
 
 			dat += "<div id='column2'>"
 			dat += "<h2><b><u>Game Settings:</u></b></h2>"
+			dat += "<b>Ambient Occlusion:</b> <a href='?_src_=prefs;preference=ambientocclusion'><b>[toggle_prefs & TOGGLE_AMBIENT_OCCLUSION ? "Enabled" : "Disabled"]</b></a><br>"
 			dat += "<b>tgui Window Mode:</b> <a href='?_src_=prefs;preference=tgui_fancy'><b>[(tgui_fancy) ? "Fancy (default)" : "Compatible (slower)"]</b></a><br>"
 			dat += "<b>tgui Window Placement:</b> <a href='?_src_=prefs;preference=tgui_lock'><b>[(tgui_lock) ? "Primary monitor" : "Free (default)"]</b></a><br>"
 			dat += "<b>Play Admin Midis:</b> <a href='?_src_=prefs;preference=hear_midis'><b>[(toggles_sound & SOUND_MIDI) ? "Yes" : "No"]</b></a><br>"
 			dat += "<b>Play Admin Internet Sounds:</b> <a href='?_src_=prefs;preference=hear_internet'><b>[(toggles_sound & SOUND_INTERNET) ? "Yes" : "No"]</b></a><br>"
 			dat += "<b>Play Lobby Music:</b> <a href='?_src_=prefs;preference=lobby_music'><b>[(toggles_sound & SOUND_LOBBY) ? "Yes" : "No"]</b></a><br>"
 			dat += "<b>Play VOX Announcements:</b> <a href='?_src_=prefs;preference=sound_vox'><b>[(hear_vox) ? "Yes" : "No"]</b></a><br>"
-			dat += "<b>Ghost Ears:</b> <a href='?_src_=prefs;preference=ghost_ears'><b>[(toggles_chat & CHAT_GHOSTEARS) ? "All Speech" : "Nearest Creatures"]</b></a><br>"
-			dat += "<b>Ghost Sight:</b> <a href='?_src_=prefs;preference=ghost_sight'><b>[(toggles_chat & CHAT_GHOSTSIGHT) ? "All Emotes" : "Nearest Creatures"]</b></a><br>"
-			dat += "<b>Ghost Radio:</b> <a href='?_src_=prefs;preference=ghost_radio'><b>[(toggles_chat & CHAT_GHOSTRADIO) ? "All Chatter" : "Nearest Speakers"]</b></a><br>"
-			dat += "<b>Ghost Hivemind:</b> <a href='?_src_=prefs;preference=ghost_hivemind'><b>[(toggles_chat & CHAT_GHOSTHIVEMIND) ? "Show Hivemind" : "Hide Hivemind"]</b></a><br>"
+			dat += "<b>Default Ghost Night Vision Level:</b> <a href='?_src_=prefs;preference=ghost_vision_pref;task=input'><b>[ghost_vision_pref]</b></a><br>"
 			if(CONFIG_GET(flag/allow_Metadata))
 				dat += "<b>OOC Notes:</b> <a href='?_src_=prefs;preference=metadata;task=input'> Edit </a>"
 			dat += "</div>"
@@ -535,6 +568,20 @@ var/const/MAX_SAVE_SLOTS = 10
 					</b> <a href='?_src_=prefs;preference=toggle_prefs;flag=[TOGGLE_COMBAT_CLICKDRAG_OVERRIDE]'><b>[toggle_prefs & TOGGLE_COMBAT_CLICKDRAG_OVERRIDE ? "On" : "Off"]</b></a><br>"
 			dat += "<b>Toggle Alternate-Fire Dual Wielding: \
 					</b> <a href='?_src_=prefs;preference=toggle_prefs;flag=[TOGGLE_ALTERNATING_DUAL_WIELD]'><b>[toggle_prefs & TOGGLE_ALTERNATING_DUAL_WIELD ? "On" : "Off"]</b></a><br>"
+			dat += "<b>Toggle Middle-Click Swap Hands: \
+					</b> <a href='?_src_=prefs;preference=toggle_prefs;flag=[TOGGLE_MIDDLE_MOUSE_SWAP_HANDS]'><b>[toggle_prefs & TOGGLE_MIDDLE_MOUSE_SWAP_HANDS ? "On" : "Off"]</b></a><br>"
+			dat += "</div>"
+		if(MENU_ERT)
+			dat += "<div id='column1'>"
+			dat += "<h2><b><u>ERT Settings:</u></b></h2>"
+			dat += "<b>Spawn as Leader:</b> <a href='?_src_=prefs;preference=toggles_ert;flag=[PLAY_LEADER]'><b>[toggles_ert & PLAY_LEADER ? "Yes" : "No"]</b></a><br>"
+			dat += "<b>Spawn as Medic:</b> <a href='?_src_=prefs;preference=toggles_ert;flag=[PLAY_MEDIC]'><b>[toggles_ert & PLAY_MEDIC ? "Yes" : "No"]</b></a><br>"
+			dat += "<b>Spawn as Engineer:</b> <a href='?_src_=prefs;preference=toggles_ert;flag=[PLAY_ENGINEER]'><b>[toggles_ert & PLAY_ENGINEER ? "Yes" : "No"]</b></a><br>"
+			dat += "<b>Spawn as Specialist:</b> <a href='?_src_=prefs;preference=toggles_ert;flag=[PLAY_HEAVY]'><b>[toggles_ert & PLAY_HEAVY ? "Yes" : "No"]</b></a><br>"
+			dat += "<b>Spawn as Smartgunner:</b> <a href='?_src_=prefs;preference=toggles_ert;flag=[PLAY_SMARTGUNNER]'><b>[toggles_ert & PLAY_SMARTGUNNER ? "Yes" : "No"]</b></a><br>"
+			if(RoleAuthority.roles_whitelist[user.ckey] & WHITELIST_SYNTHETIC)
+				dat += "<b>Spawn as Synth:</b> <a href='?_src_=prefs;preference=toggles_ert;flag=[PLAY_SYNTH]'><b>[toggles_ert & PLAY_SYNTH ? "Yes" : "No"]</b></a><br>"
+			dat += "<b>Spawn as Miscellaneous:</b> <a href='?_src_=prefs;preference=toggles_ert;flag=[PLAY_MISC]'><b>[toggles_ert & PLAY_MISC ? "Yes" : "No"]</b></a><br>"
 			dat += "</div>"
 
 	dat += "</div></body>"
@@ -547,7 +594,7 @@ var/const/MAX_SAVE_SLOTS = 10
 //splitJobs 	- Allows you split the table by job. You can make different tables for each department by including their heads. Defaults to CE to make it look nice.
 //width	 		- Screen' width. Defaults to 550 to make it look nice.
 //height 	 	- Screen's height. Defaults to 500 to make it look nice.
-/datum/preferences/proc/SetChoices(mob/user, limit = 18, list/splitJobs = list(), width = 800, height = 850)
+/datum/preferences/proc/SetChoices(mob/user, limit = 19, list/splitJobs = list(), width = 950, height = 700)
 	if(!RoleAuthority)
 		return
 
@@ -571,7 +618,7 @@ var/const/MAX_SAVE_SLOTS = 10
 		if(!job)
 			debug_log("Missing job for prefs: [role_name]")
 			continue
-		index += 1
+		index++
 		if((index >= limit) || (job.title in splitJobs))
 			if((index < limit) && (lastJob != null))
 				//If the cells were broken up by a job in the splitJob list then it will fill in the rest of the cells with
@@ -758,7 +805,7 @@ var/const/MAX_SAVE_SLOTS = 10
 					SetChoices(user)
 				if("random")
 					if(alternate_option == GET_RANDOM_JOB || alternate_option == BE_MARINE || alternate_option == RETURN_TO_LOBBY)
-						alternate_option += 1
+						alternate_option++
 					else if(alternate_option == BE_XENOMORPH)
 						alternate_option = 0
 					else
@@ -940,10 +987,10 @@ var/const/MAX_SAVE_SLOTS = 10
 				if ("f_style")
 					f_style = random_facial_hair_style(gender, species)
 				if ("underwear")
-					underwear = gender == MALE ? pick(underwear_m) : pick(underwear_f)
+					underwear = gender == MALE ? pick(GLOB.underwear_m) : pick(GLOB.underwear_f)
 					ShowChoices(user)
 				if ("undershirt")
-					undershirt = rand(1,undershirt_t.len)
+					undershirt = gender == MALE ? pick(GLOB.undershirt_m) : pick(GLOB.undershirt_f)
 					ShowChoices(user)
 				if ("eyes")
 					r_eyes = rand(0,255)
@@ -972,10 +1019,16 @@ var/const/MAX_SAVE_SLOTS = 10
 
 				if("xeno_vision_level_pref")
 					var/static/list/vision_level_choices = list(XENO_VISION_LEVEL_NO_NVG, XENO_VISION_LEVEL_MID_NVG, XENO_VISION_LEVEL_FULL_NVG)
-					var/choice = tgui_input_list(user, "Choose your default vision level", "Vision level", vision_level_choices)
+					var/choice = tgui_input_list(user, "Choose your default xeno vision level", "Vision level", vision_level_choices, theme="hive_status")
 					if(!choice)
 						return
 					xeno_vision_level_pref = choice
+				if("ghost_vision_pref")
+					var/static/list/vision_level_choices = list(GHOST_VISION_LEVEL_NO_NVG, GHOST_VISION_LEVEL_MID_NVG, GHOST_VISION_LEVEL_FULL_NVG)
+					var/choice = tgui_input_list(user, "Choose your default ghost vision level", "Vision level", vision_level_choices)
+					if(!choice)
+						return
+					ghost_vision_pref = choice
 
 				if("synth_name")
 					var/raw_name = input(user, "Choose your Synthetic's name:", "Character Preference")  as text|null
@@ -995,7 +1048,7 @@ var/const/MAX_SAVE_SLOTS = 10
 				if("pred_gender")
 					predator_gender = predator_gender == MALE ? FEMALE : MALE
 				if("pred_age")
-					var/new_predator_age = input(user, "Choose your Predator's age(20 to 10000):", "Character Preference") as num|null
+					var/new_predator_age = tgui_input_number(user, "Choose your Predator's age(20 to 10000):", "Character Preference", 1234, 10000, 20)
 					if(new_predator_age) predator_age = max(min( round(text2num(new_predator_age)), 10000),20)
 				if("pred_trans_type")
 					var/new_translator_type = tgui_input_list(user, "Choose your translator type.", "Translator Type", PRED_TRANSLATORS)
@@ -1003,13 +1056,13 @@ var/const/MAX_SAVE_SLOTS = 10
 						return
 					predator_translator_type = new_translator_type
 				if("pred_mask_type")
-					var/new_predator_mask_type = input(user, "Choose your mask type:\n(1-12)", "Mask Selection") as num|null
+					var/new_predator_mask_type = tgui_input_number(user, "Choose your mask type:\n(1-12)", "Mask Selection", 1, 12, 1)
 					if(new_predator_mask_type) predator_mask_type = round(text2num(new_predator_mask_type))
 				if("pred_armor_type")
-					var/new_predator_armor_type = input(user, "Choose your armor type:\n(1-7)", "Armor Selection") as num|null
+					var/new_predator_armor_type = tgui_input_number(user, "Choose your armor type:\n(1-7)", "Armor Selection", 1, 7, 1)
 					if(new_predator_armor_type) predator_armor_type = round(text2num(new_predator_armor_type))
 				if("pred_boot_type")
-					var/new_predator_boot_type = input(user, "Choose your greaves type:\n(1-4)", "Greave Selection") as num|null
+					var/new_predator_boot_type = tgui_input_number(user, "Choose your greaves type:\n(1-4)", "Greave Selection", 1, 4, 1)
 					if(new_predator_boot_type) predator_boot_type = round(text2num(new_predator_boot_type))
 				if("pred_mask_mat")
 					var/new_pred_mask_mat = tgui_input_list(user, "Choose your mask material:", "Mask Material", PRED_MATERIALS)
@@ -1026,6 +1079,35 @@ var/const/MAX_SAVE_SLOTS = 10
 					if(!new_pred_greave_mat)
 						return
 					predator_greave_material = new_pred_greave_mat
+				if("pred_caster_mat")
+					var/new_pred_caster_mat = tgui_input_list(user, "Choose your caster material:", "Caster Material", PRED_MATERIALS + "retro")
+					if(!new_pred_caster_mat)
+						return
+					predator_caster_material = new_pred_caster_mat
+				if("pred_cape_type")
+					var/datum/job/J = RoleAuthority.roles_by_name[JOB_PREDATOR]
+					var/whitelist_status = clan_ranks_ordered[J.get_whitelist_status(RoleAuthority.roles_whitelist, owner)]
+
+					var/list/options = list("None" = "None")
+					for(var/cape_name in GLOB.all_yautja_capes)
+						var/obj/item/clothing/yautja_cape/cape = GLOB.all_yautja_capes[cape_name]
+						if(whitelist_status >= initial(cape.clan_rank_required) || (initial(cape.councillor_override) && (whitelist_flags & (WHITELIST_YAUTJA_COUNCIL|WHITELIST_YAUTJA_COUNCIL_LEGACY))))
+							options += list(capitalize_first_letters(cape_name) = cape_name)
+
+					var/new_cape = tgui_input_list(user, "Choose your cape type:", "Cape Type", options)
+					if(!new_cape)
+						return
+					predator_cape_type = options[new_cape]
+				if("pred_cape_color")
+					var/new_cape_color = input(user, "Choose your cape color:", "Cape Color") as color|null
+					if(!new_cape_color)
+						return
+					predator_cape_color = new_cape_color
+				if("pred_hair")
+					var/new_h_style = input(user, "Choose your quill style:", "Quill Style") as null|anything in GLOB.yautja_hair_styles_list
+					if(!new_h_style)
+						return
+					predator_h_style = new_h_style
 				if("pred_flavor_text")
 					var/pred_flv_raw = input(user, "Choose your Predator's flavor text:", "Flavor Text", predator_flavor_text) as message
 					if(!pred_flv_raw)
@@ -1052,9 +1134,9 @@ var/const/MAX_SAVE_SLOTS = 10
 					var/list/options = list("Mateba","Desert Eagle")
 
 					if(whitelist_flags & (WHITELIST_COMMANDER_COUNCIL|WHITELIST_COMMANDER_COUNCIL_LEGACY))
-						options += list("Commodore's Mateba","Golden Desert Eagle")
+						options += list("Colonel's Mateba","Golden Desert Eagle")
 					else
-						options -= list("Commodore's Mateba","Golden Desert Eagle") //This is weird and should not be necessary but it wouldn't remove these from the list otherwise
+						options -= list("Colonel's Mateba","Golden Desert Eagle") //This is weird and should not be necessary but it wouldn't remove these from the list otherwise
 
 					var/new_co_sidearm = tgui_input_list(user, "Choose your preferred sidearm.", "Commanding Officer's Sidearm", options)
 					if(!new_co_sidearm)
@@ -1167,7 +1249,13 @@ var/const/MAX_SAVE_SLOTS = 10
 							switch(ascii_char)
 								// A  .. Z
 								if(65 to 90)			//Uppercase Letters will work on first char
-									if(!first_char)
+
+									if(length(xeno_prefix)!=2)
+										to_chat(user, SPAN_WARNING(FONT_SIZE_BIG("You can't use three letter prefix with any postfix.")))
+										return
+
+									if(!first_char && playtime < 300 HOURS)
+										to_chat(user, SPAN_WARNING(FONT_SIZE_BIG("You need to play [time_left_until(300 HOURS, playtime, 1 HOURS)] more hours to unlock double letter xeno postfix.")))
 										all_ok = FALSE
 								// 0  .. 9
 								if(48 to 57)			//Numbers will work if not the first char
@@ -1182,7 +1270,7 @@ var/const/MAX_SAVE_SLOTS = 10
 							to_chat(user, "<font color='red'>Invalid Xeno Postfix. Your Postfix can contain single letter and an optional digit after it.</font>")
 
 				if("age")
-					var/new_age = input(user, "Choose your character's age:\n([AGE_MIN]-[AGE_MAX])", "Character Preference") as num|null
+					var/new_age = tgui_input_number(user, "Choose your character's age:\n([AGE_MIN]-[AGE_MAX])", "Character Preference", 19, AGE_MAX, AGE_MIN)
 					if(new_age)
 						age = max(min( round(text2num(new_age)), AGE_MAX),AGE_MIN)
 
@@ -1255,9 +1343,9 @@ var/const/MAX_SAVE_SLOTS = 10
 						f_style = new_f_style
 
 				if("underwear")
-					var/list/underwear_options = gender == MALE ? underwear_m : underwear_f
+					var/list/underwear_options = gender == MALE ? GLOB.underwear_m : GLOB.underwear_f
 					var/old_gender = gender
-					var/new_underwear = input(user, "Choose your character's underwear:", "Character Preference")  as null|anything in underwear_options
+					var/new_underwear = tgui_input_list(user, "Choose your character's underwear:", "Character Preference", underwear_options)
 					if(old_gender != gender)
 						return
 					if(new_underwear)
@@ -1265,11 +1353,13 @@ var/const/MAX_SAVE_SLOTS = 10
 					ShowChoices(user)
 
 				if("undershirt")
-					var/list/undershirt_options
-					undershirt_options = undershirt_t
+					var/list/undershirt_options = gender == MALE ? GLOB.undershirt_m : GLOB.undershirt_f
+					var/old_gender = gender
 					var/new_undershirt = tgui_input_list(user, "Choose your character's undershirt:", "Character Preference", undershirt_options)
-					if (new_undershirt)
-						undershirt = undershirt_options.Find(new_undershirt)
+					if(old_gender != gender)
+						return
+					if(new_undershirt)
+						undershirt = new_undershirt
 					ShowChoices(user)
 
 				if("eyes")
@@ -1379,27 +1469,34 @@ var/const/MAX_SAVE_SLOTS = 10
 						citizenship = choice
 
 				if("religion")
-					var/choice = tgui_input_list(user, "Please choose a religion.", "Religion choice", religion_choices + list("None","Other"))
+					var/choice = tgui_input_list(user, "Please choose a religion.", "Religion choice", religion_choices + "Other")
 					if(!choice)
 						return
 					if(choice == "Other")
 						var/raw_choice = input(user, "Please enter a religon.")  as text|null
 						if(raw_choice)
-							religion = strip_html(raw_choice)
+							religion = strip_html(raw_choice) // This only updates itself in the UI when another change is made, eg. save slot or changing other char settings.
 						return
 					religion = choice
 		else
 			switch(href_list["preference"])
 				if("publicity")
 					if(unlock_content)
-						toggle_prefs ^= MEMBER_PUBLIC
+						toggle_prefs ^= TOGGLE_MEMBER_PUBLIC
+
+				if("ooc_flag")
+					if(CONFIG_GET(flag/ooc_country_flags))
+						toggle_prefs ^= TOGGLE_OOC_FLAG
+					else
+						to_chat(user, SPAN_WARNING("Country Flags in OOC are disabled in the current server configuration!"))
 
 				if("gender")
 					if(gender == MALE)
 						gender = FEMALE
 					else
 						gender = MALE
-					underwear = sanitize_inlist(underwear, gender == MALE ? underwear_m : underwear_f, initial(underwear))
+					underwear = sanitize_inlist(underwear, gender == MALE ? GLOB.underwear_m : GLOB.underwear_f, initial(underwear))
+					undershirt = sanitize_inlist(undershirt, gender == MALE ? GLOB.undershirt_m : GLOB.undershirt_f, initial(undershirt))
 
 				if("disabilities")				//please note: current code only allows nearsightedness as a disability
 					disabilities = !disabilities//if you want to add actual disabilities, code that selects them should be here
@@ -1419,7 +1516,7 @@ var/const/MAX_SAVE_SLOTS = 10
 					UI_style_color = UI_style_color_new
 
 				if("UIalpha")
-					var/UI_style_alpha_new = input(user, "Select a new alpha(transparence) parametr for UI, between 50 and 255") as num
+					var/UI_style_alpha_new = tgui_input_number(user, "Select a new alpha (transparency) parameter for your UI, between 50 and 255", "Select alpha", 255, 255, 50)
 					if(!UI_style_alpha_new || !(UI_style_alpha_new <= 255 && UI_style_alpha_new >= 50))
 						return
 					UI_style_alpha = UI_style_alpha_new
@@ -1435,6 +1532,9 @@ var/const/MAX_SAVE_SLOTS = 10
 
 				if("no_radials_preference")
 					no_radials_preference = !no_radials_preference
+
+				if("no_radial_labels_preference")
+					no_radial_labels_preference = !no_radial_labels_preference
 
 				if("ViewMC")
 					if(user.client.admin_holder && user.client.admin_holder.rights & R_DEBUG)
@@ -1481,6 +1581,12 @@ var/const/MAX_SAVE_SLOTS = 10
 				if("ghost_hivemind")
 					toggles_chat ^= CHAT_GHOSTHIVEMIND
 
+				if("langchat_emotes")
+					toggles_langchat ^= LANGCHAT_SEE_EMOTES
+
+				if("lang_chat_disabled")
+					lang_chat_disabled = !lang_chat_disabled
+
 				if("viewmacros")
 					macros.tgui_interact(usr)
 
@@ -1490,6 +1596,17 @@ var/const/MAX_SAVE_SLOTS = 10
 					toggle_prefs ^= flag
 					if (toggle_prefs & flag && toggle_prefs & flag_undo)
 						toggle_prefs ^= flag_undo
+
+				if("toggles_ert")
+					var/flag = text2num(href_list["flag"])
+					toggles_ert ^= flag
+
+				if("ambientocclusion")
+					toggle_prefs ^= TOGGLE_AMBIENT_OCCLUSION
+					var/atom/movable/screen/plane_master/game_world/plane_master = locate() in user?.client.screen
+					if (!plane_master)
+						return
+					plane_master.backdrop(user?.client.mob)
 
 				if("save")
 					if(save_cooldown > world.time)
@@ -1621,11 +1738,9 @@ var/const/MAX_SAVE_SLOTS = 10
 				else if(status == "mechanical")
 					I.mechanize()
 
-	sanitize_inlist(underwear, gender == MALE ? underwear_m : underwear_f, initial(underwear)) //I'm sure this is 100% unnecessary, but I'm paranoid... sue me. //HAH NOW NO MORE MAGIC CLONING UNDIES
+	sanitize_inlist(underwear, gender == MALE ? GLOB.underwear_m : GLOB.underwear_f, initial(underwear)) //I'm sure this is 100% unnecessary, but I'm paranoid... sue me. //HAH NOW NO MORE MAGIC CLONING UNDIES
+	sanitize_inlist(undershirt, gender == MALE ? GLOB.undershirt_m : GLOB.undershirt_f, initial(undershirt))
 	character.underwear = underwear
-
-	if(undershirt > undershirt_t.len || undershirt < 1)
-		undershirt = 0
 	character.undershirt = undershirt
 
 	if(backbag > 2 || backbag < 1)
@@ -1684,11 +1799,9 @@ var/const/MAX_SAVE_SLOTS = 10
 				else if(status == "mechanical")
 					I.mechanize()
 
-	sanitize_inlist(underwear, gender == MALE ? underwear_m : underwear_f, initial(underwear)) //I'm sure this is 100% unnecessary, but I'm paranoid... sue me. //HAH NOW NO MORE MAGIC CLONING UNDIES
+	sanitize_inlist(underwear, gender == MALE ? GLOB.underwear_m : GLOB.underwear_f, initial(underwear)) //I'm sure this is 100% unnecessary, but I'm paranoid... sue me. //HAH NOW NO MORE MAGIC CLONING UNDIES
+	sanitize_inlist(undershirt, gender == MALE ? GLOB.undershirt_m : GLOB.undershirt_f, initial(undershirt))
 	character.underwear = underwear
-
-	if(undershirt > undershirt_t.len || undershirt < 1)
-		undershirt = 0
 	character.undershirt = undershirt
 
 	if(backbag > 2 || backbag < 1)
@@ -1869,3 +1982,4 @@ var/const/MAX_SAVE_SLOTS = 10
 #undef MENU_YAUTJA
 #undef MENU_MENTOR
 #undef MENU_SETTINGS
+#undef MENU_ERT

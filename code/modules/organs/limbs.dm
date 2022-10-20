@@ -155,7 +155,7 @@
 		W.weapon = used_weapon
 		autopsy_data[used_weapon] = W
 
-	W.hits += 1
+	W.hits++
 	W.damage += damage
 	W.time_inflicted = world.time
 
@@ -166,7 +166,7 @@
 */
 
 /obj/limb/emp_act(severity)
-	if(!(status & LIMB_ROBOT))	//meatbags do not care about EMP
+	if(!(status & (LIMB_ROBOT|LIMB_SYNTHSKIN)))	//meatbags do not care about EMP
 		return
 	var/probability = 30
 	var/damage = 15
@@ -288,7 +288,7 @@
 	if(!is_ff && take_damage_organ_damage(brute, sharp))
 		brute /= 2
 
-	if(CONFIG_GET(flag/bones_can_break) && !(status & LIMB_ROBOT))
+	if(CONFIG_GET(flag/bones_can_break) && !(status & (LIMB_ROBOT|LIMB_SYNTHSKIN)))
 		take_damage_bone_break(brute)
 
 	if(status & LIMB_BROKEN && prob(40) && brute > 10)
@@ -297,7 +297,7 @@
 	if(used_weapon)
 		add_autopsy_data("[used_weapon]", brute + burn)
 
-	var/can_cut = (prob(brute*2) || sharp) && !(status & LIMB_ROBOT)
+	var/can_cut = (prob(brute*2) || sharp) && !(status & (LIMB_ROBOT|LIMB_SYNTHSKIN))
 	// If the limbs can break, make sure we don't exceed the maximum damage a limb can take before breaking
 	if((brute_dam + burn_dam + brute + burn) < max_damage || !CONFIG_GET(flag/limbs_can_break))
 		if(brute)
@@ -376,7 +376,7 @@
 	start_processing()
 
 /obj/limb/proc/heal_damage(brute, burn, robo_repair = FALSE)
-	if(status & LIMB_ROBOT && !robo_repair)
+	if(status & (LIMB_ROBOT|LIMB_SYNTHSKIN) && !robo_repair)
 		return
 
 	//Heal damage on the individual wounds
@@ -405,7 +405,9 @@ This function completely restores a damaged organ to perfect condition.
 */
 /obj/limb/proc/rejuvenate()
 	damage_state = "=="
-	if(status & LIMB_ROBOT)	//Robotic organs stay robotic.  Fix because right click rejuvinate makes IPC's organs organic.
+	if(status & LIMB_SYNTHSKIN)
+		status = LIMB_SYNTHSKIN
+	else if(status & LIMB_ROBOT)	//Robotic organs stay robotic.  Fix because right click rejuvinate makes IPC's organs organic.
 		status = LIMB_ROBOT
 	else
 		status = LIMB_ORGANIC
@@ -460,7 +462,7 @@ This function completely restores a damaged organ to perfect condition.
 
 	//moved this before the open_wound check so that having many small wounds for example doesn't somehow protect you from taking internal damage (because of the return)
 	//Possibly trigger an internal wound, too.
-	if(!is_ff && type != BURN && !(status & LIMB_ROBOT))
+	if(!is_ff && type != BURN && !(status & (LIMB_ROBOT|LIMB_SYNTHSKIN)))
 		take_damage_internal_bleeding(damage)
 
 	if(!(status & LIMB_SPLINTED_INDESTRUCTIBLE) && (status & LIMB_SPLINTED) && damage > 5 && prob(50 + damage * 2.5)) //If they have it splinted, the splint won't hold.
@@ -515,7 +517,7 @@ This function completely restores a damaged organ to perfect condition.
 	if(!(SSticker.current_state >= GAME_STATE_PLAYING)) //If the game hasnt started, don't add bleed. Hacky fix to avoid having 100 bleed effect from roundstart.
 		return
 
-	if(status & LIMB_ROBOT)
+	if(status & (LIMB_ROBOT|LIMB_SYNTHSKIN))
 		return
 
 	if(length(bleeding_effects_list))
@@ -568,9 +570,8 @@ This function completely restores a damaged organ to perfect condition.
 	if(brute_dam || burn_dam)
 		return TRUE
 	if(knitting_time > 0)
-		return TRUE
-	update_wounds()
-	return FALSE
+		return 1
+	return 0
 
 /obj/limb/process()
 
@@ -597,7 +598,7 @@ This function completely restores a damaged organ to perfect condition.
 
 //Updating wounds. Handles wound natural I had some free spachealing, internal bleedings and infections
 /obj/limb/proc/update_wounds()
-	if((status & LIMB_ROBOT)) //Robotic limbs don't heal or get worse.
+	if((status & (LIMB_ROBOT|LIMB_SYNTHSKIN))) //Robotic limbs don't heal or get worse.
 		return
 
 	owner.recalculate_move_delay = TRUE
@@ -694,7 +695,7 @@ This function completely restores a damaged organ to perfect condition.
 
 	var/race_icon = owner.species.icobase
 
-	if (status & LIMB_ROBOT && !(owner.species && owner.species.flags & IS_SYNTHETIC))
+	if ((status & LIMB_ROBOT) && !(owner.species && owner.species.flags & IS_SYNTHETIC))
 		overlays.Cut()
 		icon = 'icons/mob/robotic.dmi'
 		icon_state = "[icon_name]"
@@ -807,7 +808,9 @@ This function completely restores a damaged organ to perfect condition.
 		if(body_part == BODY_FLAG_CHEST)
 			return
 		stop_processing()
-		if(status & LIMB_ROBOT)
+		if(status & LIMB_SYNTHSKIN)
+			status = LIMB_DESTROYED|LIMB_SYNTHSKIN
+		else if(status & LIMB_ROBOT)
 			status = LIMB_DESTROYED|LIMB_ROBOT
 		else
 			status = LIMB_DESTROYED|LIMB_ORGANIC
@@ -862,8 +865,8 @@ This function completely restores a damaged organ to perfect condition.
 				owner.drop_inv_item_on_ground(owner.wear_mask, null, TRUE)
 				owner.update_hair()
 			if(BODY_FLAG_ARM_RIGHT)
-				if(status & LIMB_ROBOT)
-					organ = new /obj/item/robot_parts/r_arm(owner.loc)
+				if(status & (LIMB_ROBOT|LIMB_SYNTHSKIN))
+					organ = new /obj/item/robot_parts/arm/r_arm(owner.loc)
 				else
 					organ = new /obj/item/limb/arm/r_arm(owner.loc, owner)
 				if(owner.w_uniform && !amputation)
@@ -871,8 +874,8 @@ This function completely restores a damaged organ to perfect condition.
 					U.removed_parts |= body_part
 					owner.update_inv_w_uniform()
 			if(BODY_FLAG_ARM_LEFT)
-				if(status & LIMB_ROBOT)
-					organ = new /obj/item/robot_parts/l_arm(owner.loc)
+				if(status & (LIMB_ROBOT|LIMB_SYNTHSKIN))
+					organ = new /obj/item/robot_parts/arm/l_arm(owner.loc)
 				else
 					organ = new /obj/item/limb/arm/l_arm(owner.loc, owner)
 				if(owner.w_uniform && !amputation)
@@ -880,8 +883,8 @@ This function completely restores a damaged organ to perfect condition.
 					U.removed_parts |= body_part
 					owner.update_inv_w_uniform()
 			if(BODY_FLAG_LEG_RIGHT)
-				if(status & LIMB_ROBOT)
-					organ = new /obj/item/robot_parts/r_leg(owner.loc)
+				if(status & (LIMB_ROBOT|LIMB_SYNTHSKIN))
+					organ = new /obj/item/robot_parts/leg/r_leg(owner.loc)
 				else
 					organ = new /obj/item/limb/leg/r_leg(owner.loc, owner)
 				if(owner.w_uniform && !amputation)
@@ -889,8 +892,8 @@ This function completely restores a damaged organ to perfect condition.
 					U.removed_parts |= body_part
 					owner.update_inv_w_uniform()
 			if(BODY_FLAG_LEG_LEFT)
-				if(status & LIMB_ROBOT)
-					organ = new /obj/item/robot_parts/l_leg(owner.loc)
+				if(status & (LIMB_ROBOT|LIMB_SYNTHSKIN))
+					organ = new /obj/item/robot_parts/leg/l_leg(owner.loc)
 				else
 					organ = new /obj/item/limb/leg/l_leg(owner.loc, owner)
 				if(owner.w_uniform && !amputation)
@@ -898,21 +901,29 @@ This function completely restores a damaged organ to perfect condition.
 					U.removed_parts |= body_part
 					owner.update_inv_w_uniform()
 			if(BODY_FLAG_HAND_RIGHT)
-				if(!(status & LIMB_ROBOT))
-					organ= new /obj/item/limb/hand/r_hand(owner.loc, owner)
+				if(status & (LIMB_ROBOT|LIMB_SYNTHSKIN))
+					organ = new /obj/item/robot_parts/hand/r_hand(owner.loc)
+				else
+					organ = new /obj/item/limb/hand/r_hand(owner.loc, owner)
 				owner.drop_inv_item_on_ground(owner.gloves, null, TRUE)
 				owner.drop_inv_item_on_ground(owner.r_hand, null, TRUE)
 			if(BODY_FLAG_HAND_LEFT)
-				if(!(status & LIMB_ROBOT))
-					organ= new /obj/item/limb/hand/l_hand(owner.loc, owner)
+				if(status & (LIMB_ROBOT|LIMB_SYNTHSKIN))
+					organ = new /obj/item/robot_parts/hand/l_hand(owner.loc)
+				else
+					organ = new /obj/item/limb/hand/l_hand(owner.loc, owner)
 				owner.drop_inv_item_on_ground(owner.gloves, null, TRUE)
 				owner.drop_inv_item_on_ground(owner.l_hand, null, TRUE)
 			if(BODY_FLAG_FOOT_RIGHT)
-				if(!(status & LIMB_ROBOT))
-					organ= new /obj/item/limb/foot/r_foot/(owner.loc, owner)
+				if(status & (LIMB_ROBOT|LIMB_SYNTHSKIN))
+					organ = new /obj/item/robot_parts/foot/r_foot(owner.loc)
+				else
+					organ = new /obj/item/limb/foot/r_foot(owner.loc, owner)
 				owner.drop_inv_item_on_ground(owner.shoes, null, TRUE)
 			if(BODY_FLAG_FOOT_LEFT)
-				if(!(status & LIMB_ROBOT))
+				if(status & (LIMB_ROBOT|LIMB_SYNTHSKIN))
+					organ = new /obj/item/robot_parts/foot/l_foot(owner.loc)
+				else
 					organ = new /obj/item/limb/foot/l_foot(owner.loc, owner)
 				owner.drop_inv_item_on_ground(owner.shoes, null, TRUE)
 
@@ -922,6 +933,10 @@ This function completely restores a damaged organ to perfect condition.
 			owner.visible_message(SPAN_WARNING("[owner.name]'s [display_name] flies off in an arc!"),
 			SPAN_HIGHDANGER("<b>Your [display_name] goes flying off!</b>"),
 			SPAN_WARNING("You hear a terrible sound of ripping tendons and flesh!"), 3)
+
+			// Checks if the mob can feel pain or if they have at least oxycodone level of painkiller
+			if(body_part != BODY_FLAG_HEAD && owner.pain.feels_pain && owner.pain.reduction_pain < PAIN_REDUCTION_HEAVY)
+				INVOKE_ASYNC(owner, /mob.proc/emote, pick("pain", "scream"))
 
 			if(organ)
 				//Throw organs around
@@ -1039,7 +1054,7 @@ treat_grafted var tells it to apply to grafted but unsalved wounds, for burn kit
 			return FALSE
 
 /obj/limb/proc/fracture(var/bonebreak_probability)
-	if(status & (LIMB_BROKEN|LIMB_DESTROYED|LIMB_ROBOT))
+	if(status & (LIMB_BROKEN|LIMB_DESTROYED|LIMB_ROBOT|LIMB_SYNTHSKIN))
 		if (knitting_time != -1)
 			knitting_time = -1
 			to_chat(owner, SPAN_WARNING("You feel your [display_name] stop knitting together as it absorbs damage!"))
@@ -1083,8 +1098,10 @@ treat_grafted var tells it to apply to grafted but unsalved wounds, for burn kit
 			SPAN_WARNING("[owner] seems to withstand the blow!"),
 			SPAN_WARNING("Your [display_name] manages to withstand the blow!"))
 
-/obj/limb/proc/robotize(surgery_in_progress, uncalibrated)
-	if(uncalibrated) //Newly-attached prosthetics need to be calibrated to function.
+/obj/limb/proc/robotize(surgery_in_progress, uncalibrated, var/synth_skin)
+	if(synth_skin)
+		status = LIMB_SYNTHSKIN
+	else if(uncalibrated) //Newly-attached prosthetics need to be calibrated to function.
 		status = LIMB_ROBOT|LIMB_UNCALIBRATED_PROSTHETIC
 	else
 		status = LIMB_ROBOT
@@ -1096,7 +1113,7 @@ treat_grafted var tells it to apply to grafted but unsalved wounds, for burn kit
 
 	perma_injury = 0
 	for(var/obj/limb/T as anything in children)
-		T.robotize(uncalibrated = uncalibrated)
+		T.robotize(uncalibrated = uncalibrated, synth_skin = synth_skin)
 
 	update_icon(TRUE)
 
@@ -1125,7 +1142,10 @@ treat_grafted var tells it to apply to grafted but unsalved wounds, for burn kit
 	return ((status & LIMB_BROKEN) && !(status & LIMB_SPLINTED))
 
 /obj/limb/proc/is_malfunctioning()
-	return ((status & LIMB_ROBOT) && prob(brute_dam + burn_dam))
+	if(status & LIMB_ROBOT)
+		return prob(brute_dam + burn_dam)
+	else if(status & LIMB_SYNTHSKIN && (brute_dam + burn_dam) > 10)
+		return prob(brute_dam + burn_dam)
 
 //for arms and hands
 /obj/limb/proc/process_grasp(var/obj/item/c_hand, var/hand_name)

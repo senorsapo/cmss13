@@ -28,7 +28,7 @@
 		return
 	// No clicking on atoms with the NOINTERACT flag
 	if ((A.flags_atom & NOINTERACT))
-		if (istype(A, /obj/screen/click_catcher))
+		if (istype(A, /atom/movable/screen/click_catcher))
 			var/list/mods = params2list(params)
 			var/turf/TU = params2turf(mods["screen-loc"], get_turf(client.eye), client)
 			if (TU)
@@ -67,6 +67,10 @@
 		client.buildmode.object_click(src, mods, A)
 		return
 
+	if(istype(A, /obj/statclick))
+		A.clicked(src, mods)
+		return
+
 	// Click handled elsewhere. (These clicks are not affected by the next_move cooldown)
 	if (click(A, mods) | A.clicked(src, mods, location, params))
 		return
@@ -84,12 +88,12 @@
 		return
 
 	// Throwing stuff, can't throw on inventory items nor screen objects nor items inside storages.
-	if (throw_mode && A.loc != src && !isstorage(A.loc) && !istype(A, /obj/screen))
+	if (throw_mode && A.loc != src && !isstorage(A.loc) && !istype(A, /atom/movable/screen))
 		throw_item(A)
 		return
 
 	// Last thing clicked is tracked for something somewhere.
-	if(!isgun(A) && !isturf(A) && !istype(A,/obj/screen))
+	if(!isgun(A) && !isturf(A) && !istype(A,/atom/movable/screen))
 		last_target_click = world.time
 
 	var/obj/item/W = get_active_hand()
@@ -100,7 +104,7 @@
 		return
 
 	//Self-harm preference. isXeno check because xeno clicks on self are redirected to the turf below the pointer.
-	if (A == src && client.prefs && client.prefs.toggle_prefs & TOGGLE_IGNORE_SELF && src.a_intent != INTENT_HELP && !isXeno(src) && (!W || !(W.flags_item & (NOBLUDGEON|ITEM_ABSTRACT))))
+	if (A == src && client.prefs && client.prefs.toggle_prefs & TOGGLE_IGNORE_SELF && src.a_intent != INTENT_HELP && !isXeno(src) && W.force && (!W || !(W.flags_item & (NOBLUDGEON|ITEM_ABSTRACT))))
 		if (world.time % 3)
 			to_chat(src, SPAN_NOTICE("You have the discipline not to hurt yourself."))
 		return
@@ -152,7 +156,7 @@
 
 	After that, mostly just check your state, check whether you're holding an item,
 	check whether you're adjacent to the target, then pass off the click to whoever
-	is recieving it.
+	is receiving it.
 	The most common are:
 	* mob/UnarmedAttack(atom,adjacent) - used here only when adjacent, with no item in hand; in the case of humans, checks gloves
 	* atom/attackby(item,user) - used only when adjacent
@@ -236,14 +240,31 @@
 	if(!dx && !dy) return
 
 	var/direction
+	var/specific_direction
 	if(abs(dx) < abs(dy))
-		if(dy > 0)	direction = NORTH
-		else		direction = SOUTH
+		if(dy > 0)
+			direction = NORTH
+		else
+			direction = SOUTH
+		if(dx)
+			if(dx > 0)
+				specific_direction = direction|EAST
+			else
+				specific_direction = direction|WEST
 	else
-		if(dx > 0)	direction = EAST
-		else		direction = WEST
+		if(dx > 0)
+			direction = EAST
+		else
+			direction = WEST
+		if(dy)
+			if(dy > 0)
+				specific_direction = direction|NORTH
+			else
+				specific_direction = direction|SOUTH
+	if(!specific_direction)
+		specific_direction = direction
 
-	facedir(direction)
+	facedir(direction, specific_direction)
 
 
 
@@ -253,7 +274,7 @@
 // click catcher stuff
 
 
-/obj/screen/click_catcher
+/atom/movable/screen/click_catcher
 	icon = 'icons/mob/hud/screen1.dmi'
 	icon_state = "catcher"
 	layer = 0
@@ -263,7 +284,7 @@
 	flags_atom = NOINTERACT
 
 
-/obj/screen/click_catcher/proc/UpdateGreed(view_size_x = 15, view_size_y = 15)
+/atom/movable/screen/click_catcher/proc/UpdateGreed(view_size_x = 15, view_size_y = 15)
 	var/icon/newicon = icon('icons/mob/hud/screen1.dmi', "catcher")
 	var/ox = min((33 * 32)/ world.icon_size, view_size_x)
 	var/oy = min((33 * 32)/ world.icon_size, view_size_y)
@@ -281,6 +302,8 @@
 
 
 /client/proc/change_view(new_size, var/atom/source)
+	if(SEND_SIGNAL(mob, COMSIG_MOB_CHANGE_VIEW, new_size) & COMPONENT_OVERRIDE_VIEW)
+		return TRUE
 	view = mob.check_view_change(new_size, source)
 	apply_clickcatcher()
 	mob.reload_fullscreens()
